@@ -5,11 +5,30 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "field.h"
-#include "util.h"
 
+bool is_out_of_bounds(position pos, size sz) {
+    return pos.x < 0 || 
+        pos.y < 0 ||
+        pos.x > sz.size_x ||
+        pos.y > sz.size_y;
 
+}
 
-field init_field(struct size sz) {
+void free_field(field f) {
+    free(f.field);
+}
+
+bool is_correct_move(field f, position pos) {
+    if (is_out_of_bounds(pos, f.sz)) {
+        return false;
+    }
+    else if (!(f.field[pos.x][pos.y] == 0)) {
+        return false;
+    }
+    return true;
+}
+
+field init_field(size sz) {
     int **f = (int**) malloc(sz.size_x * sizeof(int));
     for (int i = 0; i < sz.size_x; i++) {
         int *line = (int*) malloc(sz.size_y * sizeof(int));
@@ -22,67 +41,70 @@ field init_field(struct size sz) {
     return fi;
 }
 
-bool check_horizontal(field f, position pos) {
-    int player = f.field[pos.x][pos.y];
-    for (int i = -1; i <= 1; i++) {
-        position current_position = {.x = pos.x, .y = pos.y + i};
-        if (!is_out_of_bounds(current_position, f.sz)) {
-            int current_field = f.field[current_position.x][current_position.y];
-            if (current_field != player) {
-                return false;
-            } 
-        }
-    }
-    return true;
-}
-
-bool check_vertical(field f, position pos) {
-    int player = f.field[pos.x][pos.y];
-    for (int i = -1; i <= 1; i++) {
-        position current_position = {.x = pos.x + i, .y = pos.y};
-        if (!is_out_of_bounds(current_position, f.sz)) {
-            int current_field = f.field[current_position.x][current_position.y];
-            if (current_field != player) {
-                return false;
-            } 
-        }
-    }
-    return true;
-}
-
-bool check_diagonal(field f, position pos) {
-    int player = f.field[pos.x][pos.y];
-    for (int i = -1; i <= 1; i++) {
-        for (int j = -1; i <= 1; i++) {
-            position current_position = {.x = pos.x + i, .y = pos.y + j};
-            if (!is_out_of_bounds(current_position, f.sz)) {
-                int current_field = f.field[current_position.x][current_position.y];
-                if (current_field != player) {
-                    return false;
-                }
+bool check_vertical(field f, int player) {
+    int counter = 0;
+    for (int i = 0; i < 3; i++) {
+        for (int j = 0; j < 3; j++) {
+            if (f.field[j][i] != player) {
+                counter = 0;
+            }
+            else {
+                counter++;
             }
         }
-    }
-    return true;
-}
-
-bool check(field f, position pos) {
-    return check_diagonal(f, pos) || check_vertical(f, pos) || check_horizontal(f, pos);
-}
-
-bool has_won(field f) {
-    for (int i = 0; i < f.sz.size_x; i++) {
-        for (int j = 0; j < f.sz.size_y; j++) {
-            int current_field = f.field[i][j];
-            position current_position = {.x = i, .y = j};
-            if (current_field != 0) {
-                if (check(f, current_position)) {
-                    return true;
-                }
-            }
+        if (counter == 3) {
+            return true;
         }
+        counter = 0;
     }
     return false;
+}
+
+bool check_horizontal(field f, int player) {
+    int counter = 0;
+    for (int i = 0; i < 3; i++) {
+        for (int j = 0; j < 3; j++) {
+            if (f.field[i][j] != player) {
+                counter = 0;
+            }
+            else {
+                counter++;
+            }
+        }
+        if (counter == 3) {
+            return true;
+        }
+        counter = 0;
+    }
+    return false;
+}
+
+bool check_diagonal(field f, int player) {
+    bool in_a_row = true;
+    for (int i = 0; i < 3; i++) {
+        if (f.field[i][i] != player) {
+            in_a_row = false;
+        }
+    }
+    if (in_a_row) {
+        return true;
+    }
+    int n = 0;
+    for (int i = 2; i >= 0; i--) {
+        if (f.field[n][i] != player) {
+            return false;
+        }
+        n++;
+    }
+    return true;
+}
+
+bool check(field f, int player) {
+    return check_diagonal(f, player) || check_vertical(f, player) || check_horizontal(f, player);
+}
+
+bool has_won(field f, int player) {
+    return check(f, player);
 }
 
 bool make_turn(field f, int player, position pos) {
@@ -119,15 +141,26 @@ void show_field(field f) {
             if (current_field == 1) s = PLAYER_1_STRING;
             else if (current_field == 2) s = PLAYER_2_STRING;
             else s = " "; 
-            if (i != 1) {
+            if (j != 1) {
                 printf("|   %s   |", s);
             }
             else {
                 printf("   %s   ", s);
             }
         }
-        printf("\n|       |       |       |\n"); 
-        printf("-------------------------\n"); 
+        printf("\n|       |       |       |\n");
+        if (i == 2) { 
+            printf("-------------------------\n"); 
+        }
+    }
+}
+
+int invert_player(int player) {
+    if (player == PLAYER_1) {
+        return PLAYER_2;
+    }
+    else {
+        return PLAYER_1;
     }
 }
 #endif
